@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FiX, FiPlus } from 'react-icons/fi'
 
@@ -25,6 +25,10 @@ interface ProjectFormProps {
 
 export default function ProjectForm({ initialData, isEdit = false, categories, techStacks }: ProjectFormProps) {
   const router = useRouter()
+  const [allCategories, setAllCategories] = useState<string[]>(categories)
+  const [newCategory, setNewCategory] = useState('')
+  const [categoryInput, setCategoryInput] = useState(initialData?.category || categories[0] || '')
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     slug: initialData?.slug || '',
@@ -34,12 +38,49 @@ export default function ProjectForm({ initialData, isEdit = false, categories, t
     tech_stack: initialData?.tech_stack || [] as string[],
     demo_url: initialData?.demo_url || '',
     github_url: initialData?.github_url || '',
-    category: initialData?.category || categories[0] || 'Web',
+    category: initialData?.category || '',
     visibility: initialData?.visibility || 'public',
   })
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [newTech, setNewTech] = useState('')
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAllCategories(data)
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryInput(value)
+    setFormData((prev) => ({ ...prev, category: value }))
+  }
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return
+    setIsCreatingCategory(true)
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategory.trim() }),
+      })
+      if (res.ok) {
+        const created = await res.json()
+        if (!allCategories.includes(created.name)) {
+          setAllCategories((prev) => [...prev, created.name])
+        }
+        setCategoryInput(created.name)
+        handleCategoryChange(created.name)
+        setNewCategory('')
+      }
+    } catch {}
+    setIsCreatingCategory(false)
+  }
 
   const generateSlug = (title: string) => {
     return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -174,15 +215,53 @@ export default function ProjectForm({ initialData, isEdit = false, categories, t
 
       <div>
         <label className="block text-sm font-medium mb-2">Category</label>
-        <select
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+        <div className="flex gap-2 mb-2">
+          <input
+            type="text"
+            value={categoryInput}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            list="category-list"
+            className="flex-1 px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="Select or type a category..."
+          />
+          <datalist id="category-list">
+            {allCategories.map((cat) => (
+              <option key={cat} value={cat} />
+            ))}
+          </datalist>
+          <button
+            type="button"
+            onClick={handleAddCategory}
+            disabled={!newCategory.trim() || isCreatingCategory}
+            className="px-4 py-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-50"
+          >
+            <FiPlus size={16} />
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+            className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            placeholder="Create new category..."
+          />
+        </div>
+        {allCategories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {allCategories.filter((c) => c !== categoryInput).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handleCategoryChange(cat)}
+                className="px-2 py-1 bg-muted/50 rounded-full text-xs hover:bg-muted transition-colors"
+              >
+                + {cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>

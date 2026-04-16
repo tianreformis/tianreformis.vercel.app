@@ -67,12 +67,25 @@ export async function incrementLikes(id: string) {
 }
 
 export async function getCategories() {
-  const projects = await getAllProjects()
-  return [...new Set(projects.map((p: any) => p.category))]
+  return getAllCategories()
 }
 
 export async function getAllTechStacks() {
   const projects = await getAllProjects()
   const stacks = projects.flatMap((p: any) => p.tech_stack || [])
   return [...new Set(stacks)]
+}
+
+export async function getAllCategories() {
+  const supabase = await getAdmin()
+  const { data, error } = await supabase.from('categories').select('name').order('name')
+  if (error) throw error
+  return data?.map((c) => c.name) || []
+}
+
+export async function createCategory(name: string) {
+  const supabase = await getAdmin()
+  const { data, error } = await supabase.from('categories').upsert({ name }, { onConflict: 'name' }).select().single()
+  if (error) throw error
+  return data
 }

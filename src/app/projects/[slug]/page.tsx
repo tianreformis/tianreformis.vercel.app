@@ -6,6 +6,8 @@ import { FiExternalLink, FiGithub, FiEye, FiCalendar } from 'react-icons/fi'
 import Link from 'next/link'
 import LikeButton from '@/components/ui/LikeButton'
 import TrackView from '@/components/ui/TrackView'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,22 +31,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params
   const project = await getProjectBySlug(slug) as Project | null
   if (!project) notFound()
-
-  const renderContent = (content: string) => {
-    return content.split('\n').map((line, i) => {
-      if (line.startsWith('# ')) return <h1 key={i} className="text-3xl font-bold mt-8 mb-4">{line.replace('# ', '')}</h1>
-      if (line.startsWith('## ')) return <h2 key={i} className="text-2xl font-semibold mt-6 mb-3">{line.replace('## ', '')}</h2>
-      if (line.startsWith('### ')) return <h3 key={i} className="text-xl font-semibold mt-4 mb-2">{line.replace('### ', '')}</h3>
-      if (line.startsWith('- **')) {
-        const match = line.match(/- \*\*(.+?)\*\*: (.+)/)
-        if (match) return <li key={i} className="ml-4 text-muted-foreground"><strong className="text-foreground">{match[1]}</strong>: {match[2]}</li>
-      }
-      if (line.startsWith('- ')) return <li key={i} className="ml-4 text-muted-foreground">{line.replace('- ', '')}</li>
-      if (line.startsWith('```')) return null
-      if (line.trim() === '') return <br key={i} />
-      return <p key={i} className="text-muted-foreground leading-relaxed">{line}</p>
-    })
-  }
 
   return (
     <div className="py-24">
@@ -107,7 +93,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="prose prose-invert max-w-none border-t border-border pt-8">
-          {renderContent(project.content)}
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {project.content}
+          </ReactMarkdown>
         </div>
       </div>
 
